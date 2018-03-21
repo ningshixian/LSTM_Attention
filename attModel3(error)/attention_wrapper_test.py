@@ -54,9 +54,8 @@ def baseline_model(n_timesteps_in, n_features):
 def attention_model(n_timesteps_in, n_features):
     model = Sequential()
     model.add(LSTM(150, input_shape=(n_timesteps_in, n_features), return_sequences=True))
-    f_rnn = LSTM(141, return_sequences=True, implementation=1)
-    f_rnn = Attention(f_rnn)
-    model.add(f_rnn)
+    lstm = LSTM(50, input_shape=(n_timesteps_in, n_features), return_sequences=True)
+    model.add(Attention(lstm))
     model.add(TimeDistributed(Dense(n_features, activation='softmax')))
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['acc'])
     return model

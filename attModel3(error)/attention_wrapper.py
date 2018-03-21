@@ -28,10 +28,10 @@ class Attention(Layer):
 
 
     def build(self, input_shape):
-        self.enc_shape, self.dec_shape = input_shape
+        self.enc_shape = input_shape
         assert len(self.enc_shape) >= 3
-        self.layers = [self.fn_rnn() for i in range(self.nlayers)]
-        nb_samples, nb_time, nb_dims = self.dec_shape
+        self.layers = [self.fn_rnn for i in range(self.nlayers)]
+        nb_samples, nb_time, nb_dims = self.enc_shape
         l0 = self.layers[0]
 
         out_shape = self.compute_output_shape(input_shape)  # - changed from self.get_output_shape_for
@@ -56,7 +56,8 @@ class Attention(Layer):
 
         
     def compute_output_shape(self, input_shape): # - changed from self.get_output_shape_for
-        return self.layers[0].compute_output_shape(input_shape[1])  # - changed from self.get_output_shape_for
+        # return (input_shape[0],input_shape[1],input_shape[2])
+        return self.layers[0].compute_output_shape(input_shape)  # - changed from self.get_output_shape_for
 
     def step(self, x, states):
         h = states[0]
@@ -85,7 +86,8 @@ class Attention(Layer):
 
     def call(self, x, mask=None):
         l0 = self.layers[0]
-        enc_output, dec_input = x
+        enc_output = x
+        # enc_output, dec_input = x
 
         if l0.stateful: initial_states = l0.states
         else: initial_states = l0.get_initial_state(dec_input)  # - changed from get_initial_states
