@@ -11,6 +11,7 @@ import tensorflow as tf
 
 class AttMemoryLayer(Layer):
     '''
+    需要两个输入，其中一个作为Attention对象
     batch_size =32
        Input: shape[x,memory]
        x is aspect vector with shape(batch_size,1,100)
@@ -130,7 +131,7 @@ if __name__ == '__main__':
     # pool =GatedLayer(name='gate')([left,right])
     from keras.layers import Add
     pool =Add()([left,right])
-    pool = AttMemoryLayer(name='watt')(pool)
+    pool = AttentivePoolingLayer(name='watt')(pool)
 
     pool =Dense(10,activation='relu')(pool)
     model =Model(inputs=[left_input,right_input],outputs=pool,name='model12')

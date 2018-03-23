@@ -3,7 +3,8 @@ from numpy import array
 from numpy import argmax
 from numpy import array_equal
 from keras.models import Sequential
-from keras.layers import CuDNNLSTM
+# from keras.layers import CuDNNLSTM
+from keras.layers import LSTM
 from keras.layers import Dense
 from keras.layers import TimeDistributed
 from keras.layers import RepeatVector
@@ -43,9 +44,9 @@ def get_pair(n_in, n_out, cardinality):
 # define the encoder-decoder model
 def baseline_model(n_timesteps_in, n_features):
     model = Sequential()
-    model.add(CuDNNLSTM(150, input_shape=(n_timesteps_in, n_features)))
+    model.add(LSTM(150, input_shape=(n_timesteps_in, n_features)))
     model.add(RepeatVector(n_timesteps_in))
-    model.add(CuDNNLSTM(150, return_sequences=True))
+    model.add(LSTM(150, return_sequences=True))
     model.add(TimeDistributed(Dense(n_features, activation='softmax')))
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['acc'])
     return model
@@ -53,7 +54,7 @@ def baseline_model(n_timesteps_in, n_features):
 # define the encoder-decoder with attention model
 def attention_model(n_timesteps_in, n_features):
     model = Sequential()
-    model.add(CuDNNLSTM(150, input_shape=(n_timesteps_in, n_features), return_sequences=True))
+    model.add(LSTM(150, input_shape=(n_timesteps_in, n_features), return_sequences=True))
     model.add(AttentionDecoder(150, n_features))
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['acc'])
     return model
