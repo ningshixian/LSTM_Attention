@@ -81,7 +81,7 @@ class AttentivePoolingLayer(Layer):
         self.b_regularizer =regularizers.get(b_regularizer)
         super(AttentivePoolingLayer, self).__init__(**kwargs)
     def build(self, input_shape):
-
+        # m2m_shape =input_shape[0]
         n_in =input_shape[2]
         n_out =1
         lim =np.sqrt(6./(n_in+n_out))
@@ -97,7 +97,7 @@ class AttentivePoolingLayer(Layer):
             self.add_loss(self.b_regularizer(self.b))
         self.build =True
     def call(self, inputs,mask=None):
-
+        # memory =inputs[0]
         memory =inputs
         print ('memory shape',K.int_shape(memory))
         gi =K.tanh(K.dot(memory,self.W)+self.b)  #32 *6 *1
@@ -108,6 +108,7 @@ class AttentivePoolingLayer(Layer):
         print ('output..shape',K.int_shape(output))
         return output
     def compute_output_shape(self, input_shape):
+        # shape =input_shape[0]
         shape =input_shape
         shape =list(shape)
 
@@ -127,8 +128,9 @@ if __name__ == '__main__':
     left =Dense(20,activation='tanh')(left_input)
     right=Dense(20,activation='tanh')(right_input)
     # pool =GatedLayer(name='gate')([left,right])
-    # (None, 5, 20)
-    pool = AttMemoryLayer(name='watt')([left, right])
+    from keras.layers import Add
+    pool =Add()([left,right])
+    pool = AttMemoryLayer(name='watt')(pool)
 
     pool =Dense(10,activation='relu')(pool)
     model =Model(inputs=[left_input,right_input],outputs=pool,name='model12')
