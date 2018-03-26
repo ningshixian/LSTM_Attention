@@ -27,6 +27,18 @@ GitHub 项目
 
 ![1](attModel1/1.png)
 
+# Attention_Recurrent
+
+GitHub 项目
+
+[ningshixian/LSTM_Attention](https://github.com/ningshixian/LSTM_Attention)
+
+
+
+![](attModel1-Residual(error)/resAtt.png)
+
+
+
 ### attModel2
 
 GitHub 项目
