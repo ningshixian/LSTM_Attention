@@ -8,7 +8,7 @@ from keras.layers import LSTM
 from keras.layers import Dense
 from keras.layers import TimeDistributed
 from keras.layers import RepeatVector
-from custom_recurrents import AttentionDecoder
+from custom_current import AttentionDecoder
 
 
 # generate a sequence of random integers
@@ -81,15 +81,15 @@ n_features = 50
 n_timesteps_in = 5
 n_timesteps_out = 2
 n_repeats = 1
-# evaluate encoder-decoder model
-print('Encoder-Decoder Model')
-results = list()
-for _ in range(n_repeats):
-    model = baseline_model(n_timesteps_in, n_features)
-    accuracy = train_evaluate_model(model, n_timesteps_in, n_timesteps_out, n_features)
-    results.append(accuracy)
-    print(accuracy)
-print('Mean Accuracy: %.2f%%' % (sum(results)/float(n_repeats)))
+# # evaluate encoder-decoder model
+# print('Encoder-Decoder Model')
+# results = list()
+# for _ in range(n_repeats):
+#     model = baseline_model(n_timesteps_in, n_features)
+#     accuracy = train_evaluate_model(model, n_timesteps_in, n_timesteps_out, n_features)
+#     results.append(accuracy)
+#     print(accuracy)
+# print('Mean Accuracy: %.2f%%' % (sum(results)/float(n_repeats)))
 # evaluate encoder-decoder with attention model
 print('Encoder-Decoder With Attention Model')
 results = list()
