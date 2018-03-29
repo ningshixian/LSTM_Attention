@@ -215,3 +215,28 @@ class AttentionLayer(Layer):
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0], input_shape[1], input_shape[-1])
+
+
+# check to see if it compiles
+if __name__ == '__main__':
+    from keras.layers import Input, LSTM,TimeDistributed, Dense, Flatten
+    from keras.models import Model
+    from keras.layers.wrappers import Bidirectional
+    import numpy as np
+
+    i = Input(shape=(100,100))
+    enc = Bidirectional(LSTM(64, return_sequences=True), merge_mode='concat')(i)    # (None, 100,128)
+    dec = AttentionLayer(128, 100, 100)(enc)
+    dec = Flatten()(dec)
+    re = Dense(1,activation='sigmoid')(dec)
+    model = Model(inputs=i, outputs=re)
+    model.summary()
+
+    n = np.random.uniform(-0.1, 0.1, 100*100)
+    n = n.reshape(1, 100, 100)  # reshape array to be 3x5
+    label = np.ones(1)
+
+    model.compile(optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['acc'])
+    model.fit(n,label,batch_size=32, epochs=1)
