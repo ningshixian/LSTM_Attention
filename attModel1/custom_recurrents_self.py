@@ -4,6 +4,7 @@ from keras import regularizers, constraints, initializers, activations
 from keras.layers.recurrent import Recurrent
 from keras.engine import InputSpec
 from tdd import _time_distributed_dense
+import numpy as np
 
 tfPrint = lambda d, T: tf.Print(input_=T, data=[T, tf.shape(T)], message=d)
 
@@ -32,6 +33,7 @@ class AttentionDecoder(Recurrent):
             "Neural machine translation by jointly learning to align and translate." 
             arXiv preprint arXiv:1409.0473 (2014).
         """
+        self.idx = 0
         self.units = units
         self.output_dim = output_dim
         self.return_probabilities = return_probabilities
@@ -90,99 +92,12 @@ class AttentionDecoder(Recurrent):
                                    initializer=self.bias_initializer,
                                    regularizer=self.bias_regularizer,
                                    constraint=self.bias_constraint)
-        """
-            Matrices for the r (reset) gate
-        """
-        self.C_r = self.add_weight(shape=(self.input_dim, self.units),
-                                   name='C_r',
+        
+        self.W_A_combine = self.add_weight(shape=(768, self.units),
+                                   name='W_A_combine',
                                    initializer=self.recurrent_initializer,
                                    regularizer=self.recurrent_regularizer,
                                    constraint=self.recurrent_constraint)
-        self.U_r = self.add_weight(shape=(self.units, self.units),
-                                   name='U_r',
-                                   initializer=self.recurrent_initializer,
-                                   regularizer=self.recurrent_regularizer,
-                                   constraint=self.recurrent_constraint)
-        self.W_r = self.add_weight(shape=(self.output_dim, self.units),
-                                   name='W_r',
-                                   initializer=self.recurrent_initializer,
-                                   regularizer=self.recurrent_regularizer,
-                                   constraint=self.recurrent_constraint)
-        self.b_r = self.add_weight(shape=(self.units, ),
-                                   name='b_r',
-                                   initializer=self.bias_initializer,
-                                   regularizer=self.bias_regularizer,
-                                   constraint=self.bias_constraint)
-
-        """
-            Matrices for the z (update) gate
-        """
-        self.C_z = self.add_weight(shape=(self.input_dim, self.units),
-                                   name='C_z',
-                                   initializer=self.recurrent_initializer,
-                                   regularizer=self.recurrent_regularizer,
-                                   constraint=self.recurrent_constraint)
-        self.U_z = self.add_weight(shape=(self.units, self.units),
-                                   name='U_z',
-                                   initializer=self.recurrent_initializer,
-                                   regularizer=self.recurrent_regularizer,
-                                   constraint=self.recurrent_constraint)
-        self.W_z = self.add_weight(shape=(self.output_dim, self.units),
-                                   name='W_z',
-                                   initializer=self.recurrent_initializer,
-                                   regularizer=self.recurrent_regularizer,
-                                   constraint=self.recurrent_constraint)
-        self.b_z = self.add_weight(shape=(self.units, ),
-                                   name='b_z',
-                                   initializer=self.bias_initializer,
-                                   regularizer=self.bias_regularizer,
-                                   constraint=self.bias_constraint)
-        """
-            Matrices for the proposal
-        """
-        self.C_p = self.add_weight(shape=(self.input_dim, self.units),
-                                   name='C_p',
-                                   initializer=self.recurrent_initializer,
-                                   regularizer=self.recurrent_regularizer,
-                                   constraint=self.recurrent_constraint)
-        self.U_p = self.add_weight(shape=(self.units, self.units),
-                                   name='U_p',
-                                   initializer=self.recurrent_initializer,
-                                   regularizer=self.recurrent_regularizer,
-                                   constraint=self.recurrent_constraint)
-        self.W_p = self.add_weight(shape=(self.output_dim, self.units),
-                                   name='W_p',
-                                   initializer=self.recurrent_initializer,
-                                   regularizer=self.recurrent_regularizer,
-                                   constraint=self.recurrent_constraint)
-        self.b_p = self.add_weight(shape=(self.units, ),
-                                   name='b_p',
-                                   initializer=self.bias_initializer,
-                                   regularizer=self.bias_regularizer,
-                                   constraint=self.bias_constraint)
-        """
-            Matrices for making the final prediction vector
-        """
-        self.C_o = self.add_weight(shape=(self.input_dim, self.output_dim),
-                                   name='C_o',
-                                   initializer=self.recurrent_initializer,
-                                   regularizer=self.recurrent_regularizer,
-                                   constraint=self.recurrent_constraint)
-        self.U_o = self.add_weight(shape=(self.units, self.output_dim),
-                                   name='U_o',
-                                   initializer=self.recurrent_initializer,
-                                   regularizer=self.recurrent_regularizer,
-                                   constraint=self.recurrent_constraint)
-        self.W_o = self.add_weight(shape=(self.output_dim, self.output_dim),
-                                   name='W_o',
-                                   initializer=self.recurrent_initializer,
-                                   regularizer=self.recurrent_regularizer,
-                                   constraint=self.recurrent_constraint)
-        self.b_o = self.add_weight(shape=(self.output_dim, ),
-                                   name='b_o',
-                                   initializer=self.bias_initializer,
-                                   regularizer=self.bias_regularizer,
-                                   constraint=self.bias_constraint)
 
         # For creating the initial state:
         self.W_s = self.add_weight(shape=(self.input_dim, self.units),
@@ -213,37 +128,38 @@ class AttentionDecoder(Recurrent):
         print('inputs shape:', inputs.get_shape())
 
         # apply the matrix on the first time step to get the initial s0.
-        s0 = activations.tanh(K.dot(inputs[:, 0], self.W_s))
+        h0 = activations.tanh(K.dot(inputs[:, self.idx], self.W_s))
 
-        # from keras.layers.recurrent to initialize a vector of (batchsize,
-        # output_dim)
-        y0 = K.zeros_like(inputs)  # (samples, timesteps, input_dims)
-        y0 = K.sum(y0, axis=(1, 2))  # (samples, )
-        y0 = K.expand_dims(y0)  # (samples, 1)
-        y0 = K.tile(y0, [1, self.output_dim])
+        # # from keras.layers.recurrent to initialize a vector of (batchsize,
+        # # output_dim)
+        # y0 = K.zeros_like(inputs)  # (samples, timesteps, input_dims)
+        # y0 = K.sum(y0, axis=(1, 2))  # (samples, )
+        # y0 = K.expand_dims(y0)  # (samples, 1)
+        # y0 = K.tile(y0, [1, self.output_dim])
 
-        return [y0, s0]
+        return [h0, h0]
 
     def step(self, x, states):
 
     	# obtain elements of the previous time step.
-        ytm, stm = states
+        htm, stm = states
+        self.idx+=1
 
         # ##    ##    ##    equation 1    ##    ##    ##    ##    ## 
 
         # repeat the hidden state to the length of the sequence
-        _stm = K.repeat(stm, self.timesteps)
+        _htm = K.repeat(htm, self.timesteps)
 
         # now multiplty the weight matrix with the repeated hidden state
-        _Wxstm = K.dot(_stm, self.W_a)
+        _Wxhtm = K.dot(_htm, self.W_a)
 
         # calculate the attention probabilities
         # this relates how much other timesteps contributed to this one.
-        et = K.dot(activations.tanh(_Wxstm + self._uxpb),
+        et = K.dot(activations.tanh(_Wxhtm + self._uxpb),
                    K.expand_dims(self.V_a))
 
 
-       ##    ##    ##    equation 2     ##    ##    ##    ##    ##
+        ##    ##    ##    equation 2     ##    ##    ##    ##    ##
     
         at = K.exp(et)
         at_sum = K.sum(at, axis=1)
@@ -258,45 +174,17 @@ class AttentionDecoder(Recurrent):
 
 
         # ~~~> calculate new hidden state
-        # equation 4  (reset gate)
+        # equation 4  (zt)
 
-        rt = activations.sigmoid(
-            K.dot(ytm, self.W_r)
-            + K.dot(stm, self.U_r)
-            + K.dot(context, self.C_r)
-            + self.b_r)
+        zt=K.concatenate([context,htm],axis=-1)
+        zt=activations.tanh(K.dot(zt, self.W_A_combine))
 
-        # equation 5 (update gate)
-        zt = activations.sigmoid(
-            K.dot(ytm, self.W_z)
-            + K.dot(stm, self.U_z)
-            + K.dot(context, self.C_z)
-            + self.b_z)
-
-        # equation 6 (proposal state)
-        s_tp = activations.tanh(
-            K.dot(ytm, self.W_p)
-            + K.dot((rt * stm), self.U_p)
-            + K.dot(context, self.C_p)
-            + self.b_p)
-
-        # equation 7 (new hidden states)
-        st = (1-zt)*stm + zt * s_tp
-
-		# equation 8 
-    	# the probability of having each character.
-        yt = activations.softmax(
-            K.dot(ytm, self.W_o)
-            + K.dot(stm, self.U_o)
-            + K.dot(context, self.C_o)
-            + self.b_o)
-
-		# a switch so that we can return the 
+		  # a switch so that we can return the 
     	# attention for visualizations
         if self.return_probabilities:
             return at, [yt, st]
         else:
-            return yt, [yt, st]
+            return zt, [self.x_seq[:, self.idx], self.x_seq[:, self.idx]]
 
     def compute_output_shape(self, input_shape):
         """
@@ -321,11 +209,36 @@ class AttentionDecoder(Recurrent):
 
 # check to see if it compiles
 if __name__ == '__main__':
-    from keras.layers import Input, LSTM
+    from keras.layers import Input, LSTM, Embedding
     from keras.models import Model
     from keras.layers.wrappers import Bidirectional
-    i = Input(shape=(100,104), dtype='float32')
-    enc = Bidirectional(LSTM(64, return_sequences=True), merge_mode='concat')(i)
-    dec = AttentionDecoder(32, 4)(enc)
-    model = Model(inputs=i, outputs=dec)
+
+    pad_length=100
+    n_chars=105
+    n_labels=6
+    embedding_learnable=False
+    encoder_units=256
+    decoder_units=256
+    trainable=True
+    return_probabilities=False
+
+    input_ = Input(shape=(pad_length,), dtype='float32')
+    input_embed = Embedding(n_chars, n_chars,
+                            input_length=pad_length,
+                            trainable=embedding_learnable,
+                            weights=[np.eye(n_chars)],
+                            name='OneHot')(input_)
+
+    rnn_encoded = Bidirectional(LSTM(encoder_units, return_sequences=True),
+                                name='bidirectional_1',
+                                merge_mode='concat',
+                                trainable=trainable)(input_embed)
+
+    y_hat = AttentionDecoder(decoder_units,
+                             name='attention_decoder_1',
+                             output_dim=n_labels,
+                             return_probabilities=return_probabilities,
+                             trainable=trainable)(rnn_encoded)
+
+    model = Model(inputs=input_, outputs=y_hat)
     model.summary()
