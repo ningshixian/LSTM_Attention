@@ -93,7 +93,7 @@ class AttentionDecoder(Recurrent):
                                    regularizer=self.bias_regularizer,
                                    constraint=self.bias_constraint)
         
-        self.W_A_combine = self.add_weight(shape=(768, self.units),
+        self.W_A_combine = self.add_weight(shape=(self.units + self.input_dim, self.units),
                                    name='W_A_combine',
                                    initializer=self.recurrent_initializer,
                                    regularizer=self.recurrent_regularizer,
