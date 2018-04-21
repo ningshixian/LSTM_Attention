@@ -31,8 +31,10 @@ def model_attention_applied_after_lstm():
     lstm_units = 32
     lstm_out = LSTM(lstm_units, return_sequences=True)(inputs)
     attention_mul = attention_3d_block(lstm_out)
-    attention_mul = Flatten()(attention_mul)
-    output = Dense(1, activation='sigmoid')(attention_mul)
+    # restnet
+    attention = concatenate(axis=-1)([inputs, attention_mul])
+    attention = Flatten()(attention)
+    output = Dense(1, activation='sigmoid')(attention)
     model = Model(input=[inputs], output=output)
     return model
 
